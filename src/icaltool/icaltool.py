@@ -249,7 +249,7 @@ class ICalTool:
 
             # sanity check
             if not re.match('[+-]{1}[A-Z,]+', component_rule):
-                error.warning('component filter cannot have inclusion and ' +
+                logger.error('component filter cannot have inclusion and ' +
                     'exclusion criteria, "{}" given'.format(component_rule))
                 return
 
