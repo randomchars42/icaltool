@@ -2,10 +2,12 @@
 
 ## tl;dr;
 
-* `.ics` -> (filter) -> `.ics`
-* `.ics` -> (filter) -> `.csv`
-* `.csv` -> (filter) -> `.ics`
-* `.csv` -> (filter) -> `.csv`
+* **`.ics` -> (filter) -> `.ics`**: `icaltool INPUTFILE.ics -f "COMPONENT:+VEVENT;DTSTART:+2015to2020" -o OUTPUTFILE.ics`
+* **`.ics` -> (filter) -> `.csv`**: `icaltool INPUTFILE.ics -f "COMPONENT:+VEVENT;DTSTART:+2015to2020" -o OUTPUTFILE.csv`
+* **`.csv` -> (filter) -> `.ics`**: `icaltool INPUTFILE.csv -f "COMPONENT:+VEVENT;DTSTART:+2015to2020" -o OUTPUTFILE.ics`
+* **`.csv` -> (filter) -> `.csv`**: `icaltool INPUTFILE.csv -f "COMPONENT:+VEVENT;DTSTART:+2015to2020" -o OUTPUTFILE.csv`
+
+and more ...
 
 ## What?
 
