@@ -511,7 +511,7 @@ class DateTime(Property):
             datetime_start = time.strptime(start, '%Y%m%dT%H%M%S')
             datetime_end = time.strptime(end, '%Y%m%dT%H%M%S')
 
-            logger.info('checking if {} <= {} < {}'.format(
+            logger.debug('checking if {} <= {} < {}'.format(
                 start, time.strftime('%Y-%m-%d %H:%M:%S', self.value), end))
             is_in_range = datetime_start <= self.value < datetime_end
 
