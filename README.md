@@ -51,11 +51,15 @@ So your full rule might be:
 
 `COMPONENT:+VEVENT;DTSTART:+2015-10to2017-11;ATTENDEE:+john.doe@mail.domain|-jane.doe@mail.domain`
 
-## Notice
+## Notes
 
-Though the script runs generally quite stable, the odd glitch can happen (especially with `"` in `.csv` files) so **please, work on a copy** ;) .
+Though the script runs generally quite stable, the odd glitch can happen (especially with `"` in `.csv`-files) so **please, work on a copy** ;) .
 
-Conversion from `.csv` to `.ics` tends to be lossy, even if the programme is generally written to preserve attributes and parameters it doesn't know.
+**Beware of `,`, `;` and `|`** when you use regular expressions as those currently do not get escape properly.
+
+**Filtering by timespans** currently does take time zones into consideration but this should only affect rather weird edge-cases.
+
+Conversion from `.ics` to `.csv` tends to be lossy, even if the programme is generally written to preserve attributes and parameters it doesn't know. For example, alarms / reminders are a nested component which does currently not translate into something represented in the `.csv`-file. Furthermore, the calendar information stored in `VTIMEZONE`, `STANDARD` and `DAYLIGHT` will be lost.
 
 ## Extendability
 
