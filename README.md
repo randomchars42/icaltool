@@ -17,6 +17,27 @@ The resulting data can be stored either as ical (`.ics`) or spreadsheet (`.csv`)
 
 ## How?
 
+`icaltool INPUTFILE [-f FILTERRULES] [-o OUTPUTFILE] [-c COMPONENT]`
+
+`icaltool` takes one input file, the file type is inferred from the ending (`.ics` or `.csv`).
+
+It can now store the parsed data into a file (`-o OUTPUTFILE`). Again, the file type is inferred by its ending (`.ics` or `.csv`).
+
+Additionally, it can filter (`-f FILTERRULES`) the parsed data using one or more rules, see *Filtering* below.
+
+If you read from or write to a `.csv`-file you need to specify a component (event [`VEVENT`], todo [`VTODO`], journal [`VJOURNAL`], alarm [`VALARM`], ...), since in a `.csv`-file only one component can be represented. If you don't specify a component, events [`VEVENT`], are assumed.
+
+**Note** that with `-f FILTERRULES` and `-o OUTPUTFILE` the order of those two arguments matter: they are parsed in order! If you output (`-o OUTPUTFILE`) a file before filtering (`-f FILTERULES`), the unfiltered data gets written to the file and the filtered data ends up where the null-pointer leads to.
+
+**Example:**
+
+`icaltool INPUTFILE.ics -o OUTPUTFILE1.csv -f "COMPONENT:+VEVENT;DTSTART:+2015to2020" -o OUTPUTFILE2.ics`
+
+ 1. read `INPUTFILE.ics`
+ 2. write the (**unfiltered**) data to `OUTPUTFILE1.csv`, note that since `-c COMPONENT` is not specified only events [`VEVENTS`] will be stored in the file
+ 3. filter the data using `COMPONENT:+VEVENT;DTSTART:+2015to2020` (see *Filtering* below)
+ 4. write the **filtered** data to `OUTPUTFILE2.csv`
+
 ### Filtering
 
 Filters can be applied specifying `-f RULES` when using the command line or using `ICalTool.filter(RULES)` after `ICalTool.load(FILE)`.
@@ -59,7 +80,7 @@ Though the script runs generally quite stable, the odd glitch can happen (especi
 
 **Filtering by timespans** currently does take time zones into consideration but this should only affect rather weird edge-cases.
 
-Conversion from `.ics` to `.csv` tends to be lossy, even if the programme is generally written to preserve attributes and parameters it doesn't know. For example, alarms / reminders are a nested component which does currently not translate into something represented in the `.csv`-file. Furthermore, the calendar information stored in `VTIMEZONE`, `STANDARD` and `DAYLIGHT` will be lost.
+Conversion from `.ics` to `.csv` tends to be lossy, even if the programme is generally written to preserve attributes and parameters it doesn't know. For example, alarms / reminders are a nested component which do currently not translate into something represented in the `.csv`-file. Furthermore, the calendar information stored in `VTIMEZONE`, `STANDARD` and `DAYLIGHT` will be lost.
 
 ## Extendability
 
