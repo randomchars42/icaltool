@@ -42,9 +42,9 @@ Filters can be applied specifying `-f RULES` when using the command line or usin
    `DTSTART:-2015to2017`
  - keep only components with a start date between 2015-10 and 2017-11:
    `DTSTART:+2015-10to2017-11`
- - ... attended by john.doe@mail.domain:
+ - ... attended by `john.doe@mail.domain`:
    `DTSTART:+2015-10to2017-11;ATTENDEE:+john.doe@mail.domain`
- - ... but not by jane.doe@mail.domain:
+ - ... but not by `jane.doe@mail.domain`:
    `...;ATTENDEE:+john.doe@mail.domain|-jane.doe@mail.domain`
 
 So your full rule might be:
