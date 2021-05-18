@@ -3,6 +3,9 @@ import csv
 import logging
 import logging.config
 import re
+import argparse
+import pathlib
+import sys
 
 from .log import log
 from . import datatypes
@@ -56,10 +59,25 @@ class ICalTool:
     def _reset(self):
         self.vcalendar = None
 
-    def csv_load(self, file_name, component,
-            has_header=True, custom_column_names=custom_column_names,
-            column_mapping=default_column_mapping,
-            delimiter=',', quotechar='"'):
+    def load(self, file_name, component='VEVENT',
+        has_header=True, custom_column_names=custom_column_names,
+        column_mapping=default_column_mapping,
+        delimiter=',', quotechar='"'):
+
+        if file_name[-3:] == 'csv':
+            self.csv_load(file_name, component, has_header, custom_column_names,
+                column_mapping, delimiter, quotechar)
+        elif file_name[-3:] == 'ics':
+            self.ical_load(file_name)
+        else:
+            logger.error('invalid file given ("{}")'.format(file_name))
+            sys.exit()
+
+    def csv_load(self, file_name, component='VEVENT',
+        has_header=True, custom_column_names=custom_column_names,
+        column_mapping=default_column_mapping,
+        delimiter=',', quotechar='"'):
+
         with open(file_name, 'r', newline='', encoding='utf-8-sig') as \
             file_handle:
 
@@ -143,7 +161,16 @@ class ICalTool:
             self.vcalendar.ical_parse(lines)
             logger.info('loaded {}'.format(file_name))
 
-    def csv_write(self, file_name, component = 'VEVENT'):
+    def write(self, file_name, component):
+        if file_name[-3:] == 'csv':
+            self.csv_write(file_name, component)
+        elif file_name[-3:] == 'ics':
+            self.ical_write(file_name)
+        else:
+            logger.error('invalid file given ("{}")'.format(file_name))
+            sys.exit()
+
+    def csv_write(self, file_name, component='VEVENT'):
         lines = []
         # can only write components of one type
         with open(file_name, 'w') as file_handle:
@@ -238,9 +265,65 @@ class ICalTool:
         self.vcalendar.filter(components, components_keep,
             parsed_rules)
 
+# taken from :
+# https://stackoverflow.com/questions/9027028/argparse-argument-order
+class CustomAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        if not 'ordered_args' in namespace:
+            setattr(namespace, 'ordered_args', [])
+        previous = namespace.ordered_args
+        previous.append((self.dest, values))
+        setattr(namespace, 'ordered_args', previous)
+
 def main():
     logging.config.dictConfig(log.config)
+
+    parser = argparse.ArgumentParser(
+        description='Tool to work with calendar data. It can read .ics ' +
+            '(preferred) and .csv files. You can filter the compontents ' +
+            '(events, todos, alarms, journals, freebusy-indicators) by their ' +
+            'type or the value of their properties, e.g. start date ' +
+            '(DTSTART) or organiser (ORGANIZER). The result can be written ' +
+            'back to a file, again either .ics (preferred) or .csv.',
+        epilog='')
+    parser.add_argument(
+        'file',
+        help='the file to load, either .csv or .ics (preferred)',
+        type=str)
+    parser.add_argument(
+        '-o',
+        '--output',
+        help='the file to write to, either .csv or .ics (preferred)',
+        type=str,
+        action=CustomAction)
+    parser.add_argument(
+        '-f',
+        '--filter',
+        help='rules to filter which component types (events, todos, alarms, ' +
+            'journals, freebusy-indicators) to keep / sort out',
+        type=str,
+        action=CustomAction)
+    parser.add_argument(
+        '-c',
+        '--component',
+        help='component type stored in the .csv-file (one of: events ' +
+            '[VEVENT], todos [VTODO], alarms [VALARM], journals [VJOURNAL], ' +
+            'freebusy-indicators [VFREEBUSY]); if no component is specified ' +
+            'events [VEVENT] are assumed to be the input / desired output',
+        type=str,
+        default='VEVENT')
+    args = parser.parse_args()
+
     tool = ICalTool()
+
+    tool.load(args.file, component=args.component)
+
+    for arg, value in args.ordered_args:
+        if arg == 'output':
+            tool.write(value, component=args.component)
+        elif arg == 'filter':
+            tool.filter(value)
 
 if __name__ == '__main__':
     main()
+
