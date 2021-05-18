@@ -2,6 +2,7 @@
 import csv
 import logging
 import logging.config
+import re
 
 from .log import log
 from . import datatypes
@@ -49,7 +50,6 @@ custom_column_names = {
 }
 
 class ICalTool:
-
     def __init__(self):
         self._reset()
 
@@ -181,15 +181,66 @@ class ICalTool:
                 file_handle.write(text)
             logger.info('finished writing to {}'.format(file_name))
 
+    def filter(self, rules):
+        if self.vcalendar is None:
+            logger.warning('cannot apply rules before calendar data has been '+
+                'loaded')
+            return
+
+        # example component rule:
+        #  - keep only events:
+        #    COMPONENT:+VEVENT
+        #  - filter out all events:
+        #    COMPONENT:-VEVENT
+        #  - filter out all events and alarms
+        #    COMPONENT:-VEVENT,VALARM
+        # example property rules:
+        #  - filter out all components with a start date between 2015 and 2017:
+        #    DTSTART:-2015to2017
+        #  - keep only components with a start date between 2015-10 and 2017-11:
+        #    DTSTART:+2015-10to2017-11
+        #  - ... attended by john.doe@mail.domain:
+        #    DTSTART:+2015-10to2017-11;ATTENDEE:+john.doe@mail.domain
+        #  - ... but not by jane.doe@mail.domain:
+        #    ...;ATTENDEE:+john.doe@mail.domain|-jane.doe@mail.domain
+
+        raw_rules = rules.split(';')
+        parsed_rules = {}
+        for raw_rule in raw_rules:
+            try:
+                name, rule = raw_rule.split(':')
+            except ValueError:
+                # no ':'
+                logger.warning('malformed rule {}'.format(raw_rule))
+                continue
+            logger.info('found rule for {}: "{}"'.format(name, rule))
+            parsed_rules[name] = rule.split('|')
+
+        try:
+            component_rule = parsed_rules['COMPONENT'][0]
+            logger.debug('found component rule: "{}"'.format(component_rule))
+
+            # sanity check
+            if not re.match('[+-]{1}[A-Z,]+', component_rule):
+                error.warning('component filter cannot have inclusion and ' +
+                    'exclusion criteria, "{}" given'.format(component_rule))
+                return
+
+            components_keep = component_rule[0] == '+'
+            components = component_rule[1:].split(',')
+            del parsed_rules['COMPONENT']
+        except KeyError:
+            # no component rule
+            # create an empty list of components to remove
+            components = []
+            components_keep = False
+
+        self.vcalendar.filter(components, components_keep,
+            parsed_rules)
+
 def main():
     logging.config.dictConfig(log.config)
     tool = ICalTool()
-    tool.ical_load('icstool/Eike.ics')
-    tool.ical_write('icstool/Eike_test.ics')
-    tool.csv_write('icstool/Eike_test.csv')
-    #tool.csv_load('icstool/Eike_test.csv', 'VEVENT')
-    #tool.csv_write('icstool/Eike_test2.csv')
-    #tool.ical_write('icstool/Eike_test2.ics')
 
 if __name__ == '__main__':
     main()

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import time
+import re
 import logging
 
 logger = logging.getLogger(__name__)
@@ -169,7 +170,79 @@ class Component:
         lines.append('END:{}'.format(self.name))
         return lines
 
-class VCALENDAR(Component):
+    def filter(self, components, components_keep, property_rules):
+        logger.info('filtering component {}'.format(self.name))
+        keep = []
+        for i, component in enumerate(self._components):
+            if not component.meets_criteria(components, components_keep,
+                property_rules):
+                logger.debug('component {} does not meet criteria'.format(
+                    component.name))
+            else:
+                logger.debug('keeping component {}'.format(component.name))
+                keep.append(component)
+                component.filter(components, components_keep, property_rules)
+        logger.info('finished filtering component {}'.format(self.name))
+        logger.info('{} had {} components before filters were applied'.format(
+            self.name, len(self._components)))
+        self._components = keep
+        logger.info('{} has {} components after filters were applied'.format(
+            self.name, len(self._components)))
+
+    def meets_criteria(self, components, components_keep, property_rules):
+        component_in = self.name in components
+        if component_in and not components_keep:
+            logger.debug('{} not in list of components to keep'.format(
+                self.name))
+            return False
+        elif not component_in and components_keep:
+            logger.debug('{} in list of components to remove'.format(
+                self.name))
+            return False
+
+        # filter by properties
+
+        property_list = {}
+        applicable_rules = 0
+        # build a dictionary of properties
+        for i, prop in enumerate(self._properties):
+            # the key will be the property name and the value a list of indices
+            # in self._properties
+            if prop.name in property_rules.keys():
+                # there is a rule for this property
+                try:
+                    # append the index to the list
+                    property_list[prop.name].append(i)
+                except KeyError:
+                    # it's the first property with this name
+                    property_list[prop.name] = [i]
+                    applicable_rules += 1
+
+        if applicable_rules < len(property_rules):
+            # not all rules
+            logger.debug('{} has {} missing properties'.format(
+                self.name, len(property_rules) - applicable_rules))
+            return False
+
+        for property_type, property_indices in property_list.items():
+            ok = False
+            for index in property_indices:
+                if self._properties[index].meets_criteria(
+                    property_rules[property_type]):
+                    ok = True
+            if not ok:
+                # none of the properties of this type satisfy the rule
+                logger.debug('{} of {} does not meet the criteria'.format(
+                    property_type, self.name))
+                return False
+        return True
+
+class StandardComponent(Component):
+    def meets_criteria(self, components, components_keep, property_rules):
+        # always keep this component
+        return True
+
+class VCALENDAR(StandardComponent):
     name = 'VCALENDAR'
     defined_properties = {
         'PRODID': [0, 'Property'],
@@ -190,9 +263,10 @@ class VEVENT(Component):
         'DTSTART': [1, 'DateTime'],
         'DTEND': [1, 'DateTime'],
         'DTSTAMP': [1, 'DateTime'],
-        'ORGANIZER': [-1, 'Property'],
+        'ORGANIZER': [0, 'Property'],
         'UID': [0, 'Property'],
-        'ATTENDEE': [-1, 'Property'],
+        # TODO make ignoring properties configurable
+        'ATTENDEE': [0, 'Property'],
         'CREATED': [0, 'DateTime'],
         'DESCRIPTION': [0, 'Property'],
         'LAST-MODIFIED': [0, 'DateTime'],
@@ -229,7 +303,7 @@ class VFREEBUSY(Component):
     name = 'VFREEBUSY'
     defined_properties = {}
 
-class VTIMEZONE(Component):
+class VTIMEZONE(StandardComponent):
     name = 'VTIMEZONE'
     defined_properties = {
         'TZID': [0, 'Property']}
@@ -247,7 +321,7 @@ class VALARM(Component):
         'X-WR-ALARMUID': [-1, 'Property'],
         'X-APPLE-DEFAULT-ALARM': [-1, 'Property']}
 
-class STANDARD(Component):
+class STANDARD(StandardComponent):
     name = 'STANDARD'
     defined_properties = {
         'TZOFFSETFROM': [0, 'Property'],
@@ -256,7 +330,7 @@ class STANDARD(Component):
         'DTSTART': [0, 'DateTime'],
         'RRULE': [0, 'Property']}
 
-class DAYLIGHT(Component):
+class DAYLIGHT(StandardComponent):
     name = 'DAYLIGHT'
     defined_properties = {
         'TZOFFSETFROM': [0, 'Property'],
@@ -295,6 +369,30 @@ class Property:
     def _write(self):
         return self.value
 
+    def meets_criteria(self, rules):
+        for rule in rules:
+            in_property = rule[0] == '+'
+            search = rule[1:]
+
+            if search[:3] == 're(' and search[-1] == ')':
+                logger.debug('applying regex "{}" to {} ("{}")'.format(
+                        search[3:-1], self.name, self.value))
+                is_in_property = re.match(search[3:-1], self.value) == True
+            else:
+                logger.debug('searching for "{}" in {} ("{}")'.format(
+                    search, self.name, self.value))
+                is_in_property = self.value.find(search) > -1
+
+            if not in_property and is_in_property:
+                logger.debug('{} includes "{}" but it may not'.format(
+                    self.name, search))
+                return False
+            if in_property and not is_in_property:
+                logger.debug('{} does not include "{}"'.format(
+                    self.name, search))
+                return False
+        return True
+
 class DateTime(Property):
     def __init__(self, name):
         super().__init__(name)
@@ -315,6 +413,7 @@ class DateTime(Property):
         return self.value
 
     def _parse(self, value):
+        self.type = None
         if value[:4] == 'TZID':
             # omit "0" following "TZID"
             tmp = value[5:].split(':', 1)
@@ -324,40 +423,51 @@ class DateTime(Property):
         elif value[:11] == 'VALUE=DATE:':
             value = value[11:]
 
+        self.value, self.type = self._guess_date_format(value)
+        return self.value
+
+    def _guess_date_format(self, value):
         length = len(value)
         if length == 8:
             format_string = '%Y%m%d'
-            self.type = 1
+            date_type = 1
         elif length == 15:
             format_string = '%Y%m%dT%H%M%S'
-            self.type = 2
+            date_type = 2
         elif length == 16:
             format_string = '%Y%m%dT%H%M%SZ'
-            self.type = 3
+            date_type = 3
+        elif length == 4:
+            format_string = '%Y'
+            date_type = 4
+        elif length == 7:
+            format_string = '%Y-%m'
+            date_type = 4
         elif length == 10:
             format_string = '%Y-%m-%d'
-            self.type = 1
+            date_type = 1
         elif length == 17:
             format_string = '%Y-%m-%dT%H%M%S'
-            self.type = 2
+            date_type = 2
         elif length == 19:
             format_string = '%Y-%m-%dT%H:%M:%S'
-            self.type = 2
+            date_type = 2
         elif length == 18:
             format_string = '%Y-%m-%dT%H%M%SZ'
-            self.type = 3
+            date_type = 3
         elif length == 20:
             format_string = '%Y-%m-%dT%H:%M:%SZ'
-            self.type = 3
+            date_type = 3
         else:
             format_string = ''
+
         try:
-            self.value = time.strptime(value, format_string)
+            date = time.strptime(value, format_string)
         except ValueError:
-            self.type = None
-            logger.info('Could not process ' + value)
+            logger.warning('Could not guess date format for "{}"'.format(
+                value))
             raise ValueError
-        return self.value
+        return (date, date_type)
 
     def _write(self):
         datetime = ''
@@ -372,3 +482,44 @@ class DateTime(Property):
         else:
             datetime += time.strftime(':%Y%m%dT%H%M%SZ', self.value)
         return datetime
+
+    def meets_criteria(self, rules):
+        for rule in rules:
+            in_property = rule[0] == '+'
+            raw_rule = rule[1:]
+
+            if raw_rule.find('to') > -1:
+                start, end = raw_rule.split('to')
+            else:
+                start = raw_rule
+                end = raw_rule
+
+            if len(start) == 4:
+                start = '{}0101T000000'.format(start)
+            elif len(start) == 7:
+                start = '{}{}01T000000'.format(start[:4], start[5:])
+            elif len(start) == 10:
+                start = '{}{}{}T000000'.format(start[:4], start[5:7], start[8:])
+
+            if len(end) == 4:
+                end = '{}0101T000000'.format(str(int(end)+1))
+            elif len(end) == 7:
+                end = '{}{}01T000000'.format(end[:4], str(int(end[5:])+1))
+            elif len(end) == 10:
+                end = '{}{}{}T000000'.format(end[:4], end[5:7], str(int(end[8:])+1))
+
+            datetime_start = time.strptime(start, '%Y%m%dT%H%M%S')
+            datetime_end = time.strptime(end, '%Y%m%dT%H%M%S')
+
+            logger.info('checking if {} <= {} < {}'.format(
+                start, time.strftime('%Y-%m-%d %H:%M:%S', self.value), end))
+            is_in_range = datetime_start <= self.value < datetime_end
+
+            if not in_property and is_in_range:
+                logger.debug('{} in exclusion range'.format(self.value))
+                return False
+            if in_property and not is_in_range:
+                logger.debug('{} not in inclusion range'.format(self.value))
+                return False
+        return True
+

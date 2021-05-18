@@ -14,7 +14,8 @@ config = {
     'handlers': {
         'console':{
             'level': 'DEBUG',
-            'level': 'WARNING',
+            'level': 'INFO',
+            #'level': 'WARNING',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },
@@ -33,7 +34,7 @@ config = {
             'propagate': False,
             'level': 'DEBUG',
         },
-        'icstool': {
+        'icaltool': {
             'handlers': ['console'],
             'propagate': False,
             'level': 'DEBUG',
