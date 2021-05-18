@@ -55,7 +55,7 @@ So your full rule might be:
 
 Though the script runs generally quite stable, the odd glitch can happen (especially with `"` in `.csv`-files) so **please, work on a copy** ;) .
 
-**Beware of `,`, `;` and `|`** when you use regular expressions as those currently do not get escape properly.
+**Beware of `,`, `;` and `|`** when using regular expressions as those currently do not get escaped properly.
 
 **Filtering by timespans** currently does take time zones into consideration but this should only affect rather weird edge-cases.
 
