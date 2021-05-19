@@ -262,26 +262,27 @@ class VEVENT(Component):
     name = 'VEVENT'
     defined_properties = {
         # handle (0: accept, 1: require, -1: ignore), target class
+        'UID': [0, 'Property'],
         'DTSTART': [1, 'DateTime'],
         'DTEND': [1, 'DateTime'],
+        'TRANSP': [0, 'Property'],
         'DTSTAMP': [1, 'DateTime'],
-        'ORGANIZER': [0, 'Property'],
-        'UID': [0, 'Property'],
-        # TODO make ignoring properties configurable
-        'ATTENDEE': [0, 'Property'],
         'CREATED': [0, 'DateTime'],
-        'DESCRIPTION': [0, 'Property'],
         'LAST-MODIFIED': [0, 'DateTime'],
-        'LOCATION': [0, 'Property'],
-        'SEQUENCE': [0, 'Property'],
+        'DESCRIPTION': [0, 'Property'],
         'SUMMARY': [0, 'Property'],
+        'RECURRENCE-ID': [0, 'DateTime'],
+        'SEQUENCE': [0, 'Property'],
+        'LOCATION': [0, 'Property'],
         'CATEGORIES': [0, 'Property'],
         'CLASS': [0, 'Property'],
         'ATTACH': [0, 'Property'],
-        'TRANSP': [0, 'Property'],
+        # TODO make ignoring properties configurable
+        'ATTENDEE': [0, 'Property'],
+        'ORGANIZER': [0, 'Property'],
+        'STATUS': [0, 'Property'],
         'RRULE': [0, 'Property'],
         'EXDATE': [0, 'Property'],
-        'STATUS': [0, 'Property'],
         'X-ALT-DESC': [-1, 'Property'],
         'X-APPLE-DEFAULT-ALARM': [-1, 'Property'],
         'X-APPLE-TRAVEL-ADVISORY-BEHAVIOR': [-1, 'Property'],
@@ -295,7 +296,12 @@ class VEVENT(Component):
 
 class VTODO(Component):
     name = 'VTODO'
-    defined_properties = {}
+    defined_properties = {
+        'CREATED': [1, 'DateTime'],
+        'DTSTAMP': [1, 'DateTime'],
+        'LAST-MODIFIED': [1, 'DateTime'],
+        'UID': [0, 'Property'],
+        'SUMMARY': [0, 'Property']}
 
 class VJOURNAL(Component):
     name = 'VJOURNAL'
