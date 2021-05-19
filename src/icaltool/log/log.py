@@ -13,9 +13,8 @@ config = {
     },
     'handlers': {
         'console':{
-            'level': 'DEBUG',
-            'level': 'INFO',
-            #'level': 'WARNING',
+            # gets overwritten during startup (with or without -v)
+            'level': 'ERROR',
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
         },

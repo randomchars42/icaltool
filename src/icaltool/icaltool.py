@@ -316,7 +316,8 @@ class CustomAction(argparse.Action):
         setattr(namespace, 'ordered_args', previous)
 
 def main():
-    logging.config.dictConfig(log.config)
+
+    # parse arguments
 
     parser = argparse.ArgumentParser(
         description='Tool to work with calendar data. It can read .ics ' +
@@ -360,14 +361,41 @@ def main():
             'events [VEVENT] are assumed to be the input / desired output',
         type=str,
         default='VEVENT')
+    parser.add_argument(
+        '-v',
+        '--verbosity',
+        action='count',
+        help='increase verbosity',
+        default=0)
     args = parser.parse_args()
+
+    # setup logging
+
+    logging_config = log.config
+
+    if args.verbosity >= 3:
+        logging_config['handlers']['console']['level'] = 'DEBUG'
+    elif args.verbosity == 2:
+        logging_config['handlers']['console']['level'] = 'INFO'
+    elif args.verbosity == 1:
+        logging_config['handlers']['console']['level'] = 'WARNING'
+    else:
+        logging_config['handlers']['console']['level'] = 'ERROR'
+
+    logging.config.dictConfig(logging_config)
+
+    # setup ICalTool
 
     tool = ICalTool()
 
     if not args.setup is None:
         tool.setup(json.loads(args.setup))
 
+    # load file
+
     tool.load(args.file, component=args.component)
+
+    # do whatever
 
     if not 'ordered_args' in args:
         logger.error('nothing to do with the loaded data - exiting')
