@@ -4,7 +4,7 @@ import logging
 import logging.config
 import re
 import argparse
-import pathlib
+import json
 import sys
 
 from .log import log
@@ -52,12 +52,52 @@ custom_column_names = {
     'STATUS': 'STATUS'
 }
 
+standard_components = [
+    'VCALENDAR',
+    'STANDARD',
+    'DAYLIGHT',
+    'VEVENT',
+    'VTODO',
+    'VJOURNAL',
+    'VALARM',
+    'VFREEBUSY'
+]
+
 class ICalTool:
+    """
+    Tool for handling calendar data (ical) as defined in:
+    RFC 2445 (https://datatracker.ietf.org/doc/html/rfc2445)
+    """
     def __init__(self):
         self._reset()
 
     def _reset(self):
         self.vcalendar = None
+
+    def setup(self, options):
+        # currently only understands
+        # {
+        #   "COMPONENTNAME": {
+        #     "defined_properties": {
+        #       "PROPERTY": [(-1|0|1), "NAMEOFCLASS"],
+        #     }
+        #   },
+        #   ...
+        # }
+        for key, value in options.items():
+            if key in standard_components:
+                class_object = getattr(datatypes, key)
+                try:
+                    for prop, values in value['defined_properties'].items():
+                        if not len(values) == 2:
+                            logger.warning('illegal value for property {} in ' +
+                                'defined_properties'.format(prop))
+                            continue
+                        #setattr(class_object.defined_properties, prop, values)
+                        class_object.defined_properties[prop] = values
+                except KeyError:
+                    logger.warning('did not unterstand option "{}"'.format(
+                        key))
 
     def load(self, file_name, component='VEVENT',
         has_header=True, custom_column_names=custom_column_names,
@@ -304,6 +344,14 @@ def main():
         type=str,
         action=CustomAction)
     parser.add_argument(
+        '-s',
+        '--setup',
+        help='json-string containing options, e.g. ' +
+            '{"VEVENT": {"defined_properties": ' +
+            '{"ATTENDEE": [-1, "Property"]}}} ' +
+            'to ignore the ATTENDEE property when parsing',
+        type=str)
+    parser.add_argument(
         '-c',
         '--component',
         help='component type stored in the .csv-file (one of: events ' +
@@ -316,8 +364,12 @@ def main():
 
     tool = ICalTool()
 
+    if not args.setup is None:
+        tool.setup(json.loads(args.setup))
+
     tool.load(args.file, component=args.component)
 
+    # process actions in order of flags
     for arg, value in args.ordered_args:
         if arg == 'output':
             tool.write(value, component=args.component)
