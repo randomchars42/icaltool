@@ -369,6 +369,10 @@ def main():
 
     tool.load(args.file, component=args.component)
 
+    if not 'ordered_args' in args:
+        logger.error('nothing to do with the loaded data - exiting')
+        return
+
     # process actions in order of flags
     for arg, value in args.ordered_args:
         if arg == 'output':

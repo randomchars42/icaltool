@@ -277,7 +277,6 @@ class VEVENT(Component):
         'CATEGORIES': [0, 'Property'],
         'CLASS': [0, 'Property'],
         'ATTACH': [0, 'Property'],
-        # TODO make ignoring properties configurable
         'ATTENDEE': [0, 'Property'],
         'ORGANIZER': [0, 'Property'],
         'STATUS': [0, 'Property'],
