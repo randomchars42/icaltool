@@ -372,6 +372,11 @@ def main():
     # process actions in order of flags
     for arg, value in args.ordered_args:
         if arg == 'output':
+            if value == args.file:
+                logger.error('please don\'t attempt to overwrite your input ' +
+                    'file - while it is technically possible it seems unwise ' +
+                    "\n cancelling")
+                continue
             tool.write(value, component=args.component)
         elif arg == 'filter':
             tool.filter(value)
