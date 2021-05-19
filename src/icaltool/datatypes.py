@@ -103,8 +103,10 @@ class Component:
             # 2. unknown
             if not name == '':
                 # add the property to the list using "accept" and `Property`
-                prop = [0, 'Property']
-                self.__class__.defined_properties[name] = prop
+                required = 0
+                property_class = 'Property'
+                self.__class__.defined_properties[name] = [required,
+                    property_class]
                 logger.warning('unknown property "{}" added to {}'.format(
                     name, self.name))
 
